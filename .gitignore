@@ -1,0 +1,79 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Django stuff:
+*.log
+db.sqlite3
+db.sqlite3-journal
+
+# Media files
+/media/
+
+# Local development settings
+local_settings.py
+
+# Environments
+/env/
+venv/
+env/
+ENV/
+env.bak/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log
+*.out
+*.err
+
+# Python packaging
+*.egg
+*.egg-info/
+dist/
+build/
+*.manifest
+*.spec
+
+# Coverage reports
+htmlcov/
+*.cover
+.coverage
+*.cov
+.coverage.*
+.cache
+
+# Pytest
+.pytest_cache/
+
+# Gunicorn logs
+gunicorn*.pid
+*.sock
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# MySQL and PostgreSQL
+*.pid
+*.sql
+*.backup
+
+# Other files
+*.gz
+*.tar
+*.zip
+*.7z
+*.rar
+*.sql.gz
