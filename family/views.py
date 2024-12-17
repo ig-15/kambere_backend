@@ -445,36 +445,3 @@ class SubmitChallengeView(APIView):
         )
 
         return Response(UserChallengeResultSerializer(result).data, status=status.HTTP_201_CREATED)
-class SubmitChallengeView(APIView):
-    def post(self, request, challenge_id):
-        # Fetch the challenge object
-        challenge = Challenge.objects.get(id=challenge_id)
-        
-        # Fetch user's answers from the request
-        answers = request.data.get('answers', {})
-
-        # Initialize score
-        score = 0
-
-        # Loop through each question and check if the answer is correct
-        for question_id, answer in answers.items():
-            try:
-                question = Question.objects.get(id=question_id, challenge=challenge)
-                
-                # Check if the user's answer is correct
-                if question.correct_answer == answer:
-                    score += 1
-            except Question.DoesNotExist:
-                continue
-
-        # Save the answer submission with the calculated score
-        answer_submission = AnswerSubmission.objects.create(
-            user=request.user,
-            challenge=challenge,
-            score=score
-        )
-
-        return Response({
-            "message": "Challenge submitted successfully.",
-            "score": score
-        }, status=status.HTTP_200_OK)
