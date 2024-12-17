@@ -69,7 +69,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'name', 'description', 'date', 'status', 'assigned_by', 'family', 'assigned_to']
+        fields = ['id', 'name', 'description', 'date', 'status', 'assigned_by', 'assigned_to']
 
     def validate(self, data):
         if self.context['request'].user.family_role != 'parent':

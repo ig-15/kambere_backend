@@ -54,10 +54,23 @@ class SignupView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             if data.get('family_role') == 'parent':
+                print("hello")
                 family = Family.objects.create(group_name=data.get('group_name'), created_by=user)
+                family.save()
                 family_member = FamilyMember.objects.create(user=user, family=family)
-                FamilyGroup.objects.create(group_name=data.get('group_name'), family_code=family.family_code)
+                print(family_member)
+                family_member.save()
+                fam_grp = FamilyGroup.objects.create(group_name=data.get('group_name'), family_code=family.family_code)
+                fam_grp.save()
                 user.family_code = family.family_code
+                user.save()
+            elif data.get("family_role") == 'child':
+                print("hello")
+                family = Family.objects.all().filter(family_code=data.get('family_code'))
+                family_member = FamilyMember.objects.create(user=user, family=family[0])
+                print(family_member)
+                family_member.save()
+                user.family_code = data.get("family_code")
                 user.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -143,7 +156,14 @@ class FamilyMembersView(ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return FamilyMember.objects.filter(family__created_by=user)
+        print(user)
+        print(FamilyMember.objects.all())
+        u = User.objects.all().filter(email=user)
+        print(u[0].family_code)
+        fam = Family.objects.all().filter(family_code=u[0].family_code)
+        fam_members = FamilyMember.objects.all().values()
+        print(fam_members)
+        return FamilyMember.objects.all().filter(family=fam[0])
 
     def perform_create(self, serializer):
         parent = self.request.user
@@ -163,14 +183,23 @@ class TaskListCreateView(ListCreateAPIView):
 
     def get_queryset(self):
         # Parents see tasks they created, children see all family tasks
-        user = self.request.user
-        if user.family_role == 'parent':
-            return Task.objects.filter(family=user.created_family)
+        parent = self.request.user
+        print(parent)
+        user = User.objects.all().filter(email=parent)
+        print(user)
+        family = Family.objects.all().filter(family_code=user[0].family_code)
+        if user[0].family_role == 'parent':
+            return Task.objects.filter(family=family[0])
         return Task.objects.filter(family__members__user=user)
 
     def perform_create(self, serializer):
         parent = self.request.user
-        serializer.save(family=parent.created_family, assigned_by=parent.family_role)
+        print(parent)
+        user = User.objects.all().filter(email=parent)
+        print(user)
+        family = Family.objects.all().filter(family_code=user[0].family_code)
+        print(family)
+        serializer.save(family=family[0], assigned_by=parent.family_role)
 
 class TaskUpdateDeleteView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]

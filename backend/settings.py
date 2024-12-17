@@ -147,4 +147,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'family.User'
+# CSRF_TRUSTED_ORIGINS = ['http://10.12.72.199:8000']
+
 
