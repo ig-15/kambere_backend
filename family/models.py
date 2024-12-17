@@ -5,13 +5,13 @@ import random
 from django.utils.timezone import now
 from django.contrib.auth.models import AbstractUser
 
-class AdminUser(AbstractUser):
-    is_migepf_admin = models.BooleanField(default=True) 
-    pass
+# class AdminUser(AbstractUser):
+#     is_migepf_admin = models.BooleanField(default=True) 
+#     pass
 
-    class Meta:
-        verbose_name = "Admin User"
-        verbose_name_plural = "Admin Users"
+#     class Meta:
+#         verbose_name = "Admin User"
+#         verbose_name_plural = "Admin Users"
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -27,7 +27,27 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
+        
+class AdminUser(AbstractBaseUser):
+    email= models.EmailField(unique=True)
 
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['email']
+
+    objects = CustomUserManager()
+
+    def __str__(self):
+        return self.email
+class AdminUser(AbstractBaseUser):
+    email= models.EmailField(unique=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['email']
+
+    objects = CustomUserManager()
+    
+    def __str__(self):
+        return self.email
 class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=50, unique=True)

@@ -1,16 +1,16 @@
 from rest_framework import serializers
 from .models import User, Family, FamilyMember, FamilyStory,Story, ChallengeQuestion, FamilyChallenge, ChallengeAnswer
-from .models import Task , Challenge, Question
-from django.contrib.auth import get_user_model
+from .models import Task , Challenge, Question, AdminUser
+# from django.contrib.auth import get_user_model
 
-AdminUser = get_user_model()
+# AdminUser = get_user_model()
 
 class AdminSignupSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
         model = AdminUser
-        fields = ['email', 'username', 'password', 'confirm_password']
+        fields = ['email', 'password', 'confirm_password']
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, data):
@@ -21,7 +21,7 @@ class AdminSignupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('confirm_password')
         user = AdminUser.objects.create_user(**validated_data)
-        user.is_migepf_admin = True
+        # user.is_migepf_admin = True
         user.save()
         return user
 

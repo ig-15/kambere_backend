@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .models import User, Family, FamilyMember, FamilyMember, ChallengeAnswer,  FamilyChallenge,Task , Story, ChallengeAttempt, FamilyStory, FamilyGroup
+from .models import User, Family, FamilyMember, FamilyMember, ChallengeAnswer,  FamilyChallenge,Task , Story, ChallengeAttempt, FamilyStory, FamilyGroup, AdminUser
 from .serializers import UserSerializer, FamilySerializer, StorySerializer, ChallengeAnswerSerializer,FamilyMemberSerializer, FamilyMemberSerializer, UserProfileSerializer, FamilyStorySerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import RetrieveUpdateAPIView, ListCreateAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView
@@ -34,17 +34,28 @@ class AdminSignupView(APIView):
 
 class AdminLoginView(APIView):
     def post(self, request):
-        username_or_email = request.data.get('username_or_email')
+        email = request.data.get('email')
         password = request.data.get('password')
-        user = authenticate(username=username_or_email, password=password)
-        print(password)
-        if user:
+
+        if not email or not password:
+            return Response({'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Authenticate user by email
+        try:
+            user = AdminUser.objects.get(email=email)
+        except AdminUser.DoesNotExist:
+           return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.check_password(password):
+            # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
             return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
+                'message': 'Login successful',
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
             }, status=status.HTTP_200_OK)
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            return Response({'error': 'Invalid password'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SignupView(APIView):
