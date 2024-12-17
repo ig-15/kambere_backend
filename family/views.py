@@ -4,14 +4,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .models import User, Family, FamilyMember, FamilyMember, ChallengeAnswer,  FamilyChallenge,Task , Story, ChallengeAttempt, FamilyStory, FamilyGroup, AdminUser
-from .serializers import UserSerializer, FamilySerializer, StorySerializer, ChallengeAnswerSerializer,FamilyMemberSerializer, FamilyMemberSerializer, UserProfileSerializer, FamilyStorySerializer
+from .models import User, UserChallengeResult, Family, FamilyMember, FamilyMember, Task , Story, ChallengeAttempt, FamilyStory, FamilyGroup, AdminUser
+from .serializers import UserSerializer, FamilySerializer, StorySerializer,FamilyMemberSerializer, FamilyMemberSerializer, UserProfileSerializer, FamilyStorySerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import RetrieveUpdateAPIView, ListCreateAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView
-from .serializers import TaskSerializer, FamilyChallengeSerializer
+from .serializers import TaskSerializer
 from rest_framework.authtoken.models import Token
-from .serializers import AdminSignupSerializer
-from .models import Challenge, Question
+from .serializers import AdminSignupSerializer, UserChallengeResultSerializer
+from .models import Challenge, Question, AnswerSubmission
 from .serializers import ChallengeSerializer, QuestionSerializer
 from django.db.models import Count
 from rest_framework import serializers
@@ -237,62 +237,6 @@ class TaskUpdateDeleteView(RetrieveUpdateDestroyAPIView):
             return Response({'message': 'Status updated.'}, status=status.HTTP_200_OK)
         return super().update(request, *args, **kwargs)
 
-class ChallengeListCreateView(ListCreateAPIView):
-    queryset = Challenge.objects.all()
-    serializer_class = ChallengeSerializer
-    permission_classes = [IsAuthenticated]
-
-class ChallengeDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = Challenge.objects.all()
-    serializer_class = ChallengeSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class SubmitChallengeView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, challenge_id):
-        try:
-            challenge = Challenge.objects.get(id=challenge_id)
-        except Challenge.DoesNotExist:
-            return Response({"error": "Challenge not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        user_answers = request.data.get('answers', {})
-        questions = challenge.questions.all()
-        correct_answers = 0
-
-        for question in questions:
-            if question.question_type == 'multiple-choice':
-                if question.correct_choice == user_answers.get(str(question.id)):
-                    correct_answers += 1
-            else:
-                if question.answer.lower() == user_answers.get(str(question.id), "").lower():
-                    correct_answers += 1
-
-        score = {
-            "correct_answers": correct_answers,
-            "total_questions": questions.count(),
-            "percentage": (correct_answers / questions.count()) * 100,
-        }
-
-        return Response(score, status=status.HTTP_200_OK)
-
-class AddQuestionToChallengeView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, challenge_id):
-        try:
-            challenge = Challenge.objects.get(id=challenge_id)
-        except Challenge.DoesNotExist:
-            return Response({"error": "Challenge not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        data = request.data
-        serializer = QuestionSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save(challenge=challenge)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class StoryListCreateView(ListCreateAPIView):
     queryset = Story.objects.all()
@@ -322,44 +266,6 @@ class AnalyticsView(APIView):
             "completed_challenges": completed_challenges,
             "incomplete_challenges": incomplete_challenges,
         })
-
-
-class FamilyChallengeListCreateView(ListCreateAPIView):
-    queryset = FamilyChallenge.objects.all()
-    serializer_class = FamilyChallengeSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        # Filter challenges for the family group of the logged-in user
-        return FamilyChallenge.objects.filter(family_group=self.request.user.family_group)
-
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-
-class FamilyChallengeDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = FamilyChallenge.objects.all()
-    serializer_class = FamilyChallengeSerializer
-    permission_classes = [IsAuthenticated]
-
-
-
-class ChallengeAnswerListCreateView(ListCreateAPIView):
-    queryset = ChallengeAnswer.objects.all()
-    serializer_class = ChallengeAnswerSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        # Check if answer is correct
-        question = serializer.validated_data['question']
-        answer = serializer.validated_data['answer']
-        is_correct = question.correct_answer == answer
-        serializer.save(answered_by=self.request.user, is_correct=is_correct)
-
-    def get_queryset(self):
-        # Show answers for the family group
-        return ChallengeAnswer.objects.filter(challenge__family_group=self.request.user.family_group)
-
-
 
 class FamilyStoryListCreateView(ListCreateAPIView):
     queryset = FamilyStory.objects.all()
@@ -410,3 +316,165 @@ class FamilyStoryDetailView(RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return FamilyStory.objects.filter(family_group=self.request.user.family_group)
+
+
+class ChallengeCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        data['creator'] = request.user.id  # Add creator info
+        serializer = ChallengeSerializer(data=data)
+        if serializer.is_valid():
+            challenge = serializer.save()
+            return Response(ChallengeSerializer(challenge).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# class QuestionCreateView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, challenge_id):
+#         try:
+#             challenge = Challenge.objects.get(id=challenge_id, creator=request.user)
+#         except Challenge.DoesNotExist:
+#             return Response({'error': 'Challenge not found or you are not the creator.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         data = request.data
+#         data['challenge'] = challenge.id  # Associate question with challenge
+#         serializer = QuestionSerializer(data=data)
+#         if serializer.is_valid():
+#             question = serializer.save()
+#             return Response(QuestionSerializer(question).data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class QuestionCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, challenge_id):
+        try:
+            # Retrieve the challenge instance
+            challenge = Challenge.objects.get(id=challenge_id, creator=request.user)
+        except Challenge.DoesNotExist:
+            return Response({'error': 'Challenge not found or you are not the creator.'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()  # Create a mutable copy of request data
+        data['challenge'] = challenge.id  # Explicitly set the challenge ID
+        serializer = QuestionSerializer(data=data)
+
+        # Validate and save the question
+        if serializer.is_valid():
+            question = serializer.save()
+            return Response(QuestionSerializer(question).data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ChallengeListView(APIView):
+    def get(self, request):
+        challenges = Challenge.objects.all()
+        serializer = ChallengeSerializer(challenges, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# class SubmitChallengeView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, challenge_id):
+#         try:
+#             challenge = Challenge.objects.get(id=challenge_id)
+#         except Challenge.DoesNotExist:
+#             return Response({'error': 'Challenge not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         answers = request.data.get('answers', {})  # Format: {question_id: selected_choice}
+#         score = 0
+#         for question in challenge.questions.all():
+#             if question.id in answers and question.correct_answer == answers[question.id]:
+#                 score += 1
+
+#         # Record the result
+#         result = UserChallengeResult.objects.create(
+#             user=request.user,
+#             challenge=challenge,
+#             score=score
+#         )
+#         return Response(UserChallengeResultSerializer(result).data, status=status.HTTP_201_CREATED)
+
+
+class CreatorStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        challenges = Challenge.objects.filter(creator=request.user)
+        stats = []
+        for challenge in challenges:
+            stats.append({
+                'title': challenge.title,
+                'total_attempts': challenge.total_attempts(),
+                'total_correct': challenge.total_correct()
+            })
+        return Response(stats, status=status.HTTP_200_OK)
+
+
+
+class SubmitChallengeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, challenge_id):
+        try:
+            # Retrieve the challenge instance
+            challenge = Challenge.objects.get(id=challenge_id)
+        except Challenge.DoesNotExist:
+            return Response({'error': 'Challenge not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get the answers from the request
+        answers = request.data.get('answers', {})  # Expected format: {question_id: selected_choice}
+        score = 0
+
+        # Loop through the questions for the challenge
+        for question in challenge.questions.all():
+            selected_choice = answers.get(str(question.id))  # Ensure the question ID is in string format
+            if selected_choice and question.correct_answer == selected_choice:
+                score += 1  # Increment score if the answer is correct
+
+        # Record the result
+        result = UserChallengeResult.objects.create(
+            user=request.user,
+            challenge=challenge,
+            score=score
+        )
+
+        return Response(UserChallengeResultSerializer(result).data, status=status.HTTP_201_CREATED)
+class SubmitChallengeView(APIView):
+    def post(self, request, challenge_id):
+        # Fetch the challenge object
+        challenge = Challenge.objects.get(id=challenge_id)
+        
+        # Fetch user's answers from the request
+        answers = request.data.get('answers', {})
+
+        # Initialize score
+        score = 0
+
+        # Loop through each question and check if the answer is correct
+        for question_id, answer in answers.items():
+            try:
+                question = Question.objects.get(id=question_id, challenge=challenge)
+                
+                # Check if the user's answer is correct
+                if question.correct_answer == answer:
+                    score += 1
+            except Question.DoesNotExist:
+                continue
+
+        # Save the answer submission with the calculated score
+        answer_submission = AnswerSubmission.objects.create(
+            user=request.user,
+            challenge=challenge,
+            score=score
+        )
+
+        return Response({
+            "message": "Challenge submitted successfully.",
+            "score": score
+        }, status=status.HTTP_200_OK)

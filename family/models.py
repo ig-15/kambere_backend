@@ -110,23 +110,6 @@ class Task(models.Model):
         return f"Task for {self.name}: {self.description[:30]}"
 
 
-class Challenge(models.Model):
-    title = models.CharField(max_length=100)
-    question_type = models.CharField(max_length=20, choices=[
-        ('open-ended', 'Open-ended'),
-        ('close-ended', 'Close-ended'),
-        ('multiple-choice', 'Multiple Choice')
-    ])
-    number_of_questions = models.IntegerField()
-
-class Question(models.Model):
-    challenge = models.ForeignKey(Challenge, related_name='questions', on_delete=models.CASCADE)
-    question_statement = models.TextField()
-    answer = models.TextField(blank=True, null=True)  # For open or close-ended
-    choices = models.JSONField(blank=True, null=True)  # For multiple choice
-    correct_choice = models.TextField(blank=True, null=True)  # Multiple-choice correct answer
-
-
 class Story(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()  # The story or article content
@@ -143,41 +126,6 @@ class ChallengeAttempt(models.Model):
     challenge = models.ForeignKey('Challenge', on_delete=models.CASCADE)
     completed = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
-4
-
-class FamilyChallenge(models.Model):
-    # family_group = models.ForeignKey('FamilyGroup', on_delete=models.CASCADE)
-    family_group = models.ForeignKey(FamilyGroup, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    created_by = models.ForeignKey('User', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-class ChallengeQuestion(models.Model):
-    CHOICE_TYPE = [
-        ('MC', 'Multiple Choice'),
-        ('TF', 'True/False'),
-    ]
-
-    challenge = models.ForeignKey(FamilyChallenge, on_delete=models.CASCADE, related_name='questions')
-    question_type = models.CharField(max_length=2, choices=CHOICE_TYPE)
-    statement = models.TextField()
-    choices = models.JSONField(blank=True, null=True)  # For MC questions: {"A": "Choice1", "B": "Choice2", ...}
-    correct_answer = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
-class ChallengeAnswer(models.Model):
-    challenge = models.ForeignKey(FamilyChallenge, on_delete=models.CASCADE)
-    question = models.ForeignKey(ChallengeQuestion, on_delete=models.CASCADE)
-    answered_by = models.ForeignKey('User', on_delete=models.CASCADE)
-    answer = models.CharField(max_length=255)
-    is_correct = models.BooleanField(default=False)
-    answered_at = models.DateTimeField(auto_now_add=True)
-
 
 class FamilyStory(models.Model):
     title = models.CharField(max_length=255)
@@ -191,3 +139,43 @@ class FamilyStory(models.Model):
 
     def __str__(self):
         return self.title
+
+class Challenge(models.Model):
+    title = models.CharField(max_length=255)
+    challenge_type = models.CharField(max_length=50, choices=[('multiple_choice', 'Multiple Choice')], default='multiple_choice')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_challenges', default=1)
+    created_at = models.DateTimeField(default=now)
+
+    def __str__(self):
+        return self.title
+    def total_attempts(self):
+        return self.userchallengeresults.count()
+
+    def total_correct(self):
+        return self.userchallengeresults.filter(score__gt=0).count()
+
+
+class Question(models.Model):
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='questions')
+    question_statement = models.TextField()
+    choices = models.JSONField()  # Stores choices as a list
+    correct_answer = models.CharField(max_length=255, default="no choices provided")
+
+    def __str__(self):
+        return f"Question for {self.challenge.title}"
+    
+class UserChallengeResult(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='challenge_results')
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='userchallengeresults')
+    score = models.IntegerField()
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.challenge.title} - Score: {self.score}"
+    
+
+class AnswerSubmission(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE)
+    score = models.IntegerField(default=0)
+    submitted_at = models.DateTimeField(auto_now_add=True)

@@ -1,11 +1,13 @@
 from django.urls import path
 from .views import (SignupView, LoginView , ProfileView, FamilyMembersView, UpdateFamilyMemberView, TaskListCreateView , 
-    TaskUpdateDeleteView, AdminSignupView, AdminLoginView, ChallengeListCreateView, ChallengeDetailView, ChallengeListCreateView,
-    ChallengeDetailView,
-    AddQuestionToChallengeView, AnalyticsView,
-    SubmitChallengeView, StoryListCreateView, StoryDetailView,
-    FamilyChallengeListCreateView, FamilyChallengeDetailView, ChallengeAnswerListCreateView, 
-    FamilyStoryDetailView, FamilyStoryListCreateView)
+    TaskUpdateDeleteView, AdminSignupView, AdminLoginView, AnalyticsView,
+    SubmitChallengeView, StoryListCreateView, StoryDetailView, 
+    FamilyStoryDetailView, FamilyStoryListCreateView,
+    ChallengeCreateView,
+    QuestionCreateView,
+    ChallengeListView,
+    SubmitChallengeView,
+    CreatorStatsView)
 
 
 urlpatterns = [
@@ -18,16 +20,16 @@ urlpatterns = [
     path('tasks/<int:pk>/', TaskUpdateDeleteView.as_view(), name='task-detail'),
     path('admin-signup/', AdminSignupView.as_view(), name='admin-signup'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
-    path('challenges/', ChallengeListCreateView.as_view(), name='challenge-list-create'),
-    path('challenges/<int:pk>/', ChallengeDetailView.as_view(), name='challenge-detail'),
-    path('challenges/<int:challenge_id>/questions/', AddQuestionToChallengeView.as_view(), name='add-question'),
-    path('challenges/<int:challenge_id>/submit/', SubmitChallengeView.as_view(), name='submit-challenge'),
     path('stories/', StoryListCreateView.as_view(), name='story-list-create'),
     path('stories/<int:pk>/', StoryDetailView.as_view(), name='story-detail'),
     path('analytics/', AnalyticsView.as_view(), name='analytics'),
     # path('family-challenges/', FamilyChallengeListCreateView.as_view(), name='family-challenge-list-create'),
     # path('family-challenges/<int:pk>/', FamilyChallengeDetailView.as_view(), name='family-challenge-detail'),
-    path('challenge-answers/', ChallengeAnswerListCreateView.as_view(), name='challenge-answer-list-create'),
     path('family-stories/', FamilyStoryListCreateView.as_view(), name='family-story-list-create'),
     path('family-stories/<int:pk>/', FamilyStoryDetailView.as_view(), name='family-story-detail'),
+    path('challenges/', ChallengeListView.as_view(), name='challenge-list'),
+    path('challenges/create/', ChallengeCreateView.as_view(), name='challenge-create'),
+    path('challenges/<int:challenge_id>/questions/', QuestionCreateView.as_view(), name='question-create'),
+    path('challenges/<int:challenge_id>/submit/', SubmitChallengeView.as_view(), name='challenge-submit'),
+    path('challenges/stats/', CreatorStatsView.as_view(), name='creator-stats'),
 ]
